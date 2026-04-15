@@ -72,8 +72,8 @@ h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
     <span class="badge badge-teacher">教師モード</span>
     <h1>授業設定</h1>
     <div class="card">
-      <label>Anthropic APIキー</label>
-      <input type="password" id="api-key" placeholder="sk-ant-..." />
+      <label>OpenAI APIキー</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
       <label>教師モードのパスワード（変更する場合）</label>
       <input type="text" id="teacher-pw" placeholder="例: history2025" />
       <label>テーマ名</label>
@@ -250,23 +250,23 @@ ${settings.knowledge}
 - 上記の専門書テキストの内容を根拠として優先的に使用してください。`;
 }
 
-async function callClaude(userMessage, isHint = false) {
+async function callAI(userMessage, isHint = false) {
   if (state.isLoading) return null;
   state.isLoading = true;
   addLoading();
-  const messages = [...state.history];
+  const messages = [{ role: 'system', content: buildSystemPrompt() }, ...state.history];
   const userContent = isHint ? 'ヒントをください。でも答えは教えないでください。' : userMessage;
   messages.push({ role: 'user', content: userContent });
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': settings.apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: buildSystemPrompt(), messages })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey },
+      body: JSON.stringify({ model: 'gpt-4o', max_tokens: 1000, messages })
     });
     const data = await res.json();
     removeLoading(); state.isLoading = false;
     if (data.error) { addMessage('ai', 'エラー：' + data.error.message); return null; }
-    const reply = data.content[0].text;
+    const reply = data.choices[0].message.content;
     state.history.push({ role: 'user', content: userContent });
     state.history.push({ role: 'assistant', content: reply });
     return reply;
@@ -293,7 +293,7 @@ async function submitAnswer() {
   document.getElementById('student-input').value = '';
   addMessage('student', input);
   state.stuckCount++;
-  const reply = await callClaude(input);
+  const reply = await callAI(input);
   if (!reply) return;
   if (reply.includes('CONCEPT_DONE:')) {
     const parts = reply.split('CONCEPT_DONE:');
@@ -308,7 +308,7 @@ async function submitAnswer() {
     } else {
       updateProgress();
       setTimeout(async () => {
-        const next = await callClaude('次の概念に進んでください。新しい問いを出してください。');
+        const next = await callAI('次の概念に進んでください。新しい問いを出してください。');
         if (next && !next.includes('CONCEPT_DONE:')) addMessage('ai', next);
       }, 800);
     }
@@ -322,7 +322,7 @@ async function requestHint() {
   if (state.isLoading) return;
   state.hintCount++; state.stuckCount = 0;
   document.getElementById('hint-area').style.display = 'none';
-  const reply = await callClaude('', true);
+  const reply = await callAI('', true);
   if (reply && !reply.includes('CONCEPT_DONE:')) addMessage('ai', reply);
 }
 
