@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>歴史概念コーチ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; }
+.screen { display: none; padding: 1.5rem 1rem; min-height: 100vh; }
+.screen.active { display: block; }
+.center { max-width: 480px; margin: 2rem auto; }
+.wide { max-width: 640px; margin: 0 auto; }
+.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+label { font-size: 13px; color: #666; display: block; margin-bottom: 6px; margin-top: 12px; }
+label:first-child { margin-top: 0; }
+input[type=text], input[type=password], textarea, select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 4px; font-family: inherit; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: #534AB7; }
+textarea { min-height: 100px; resize: vertical; }
+.btn { display: inline-block; padding: 9px 20px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #1a1a1a; cursor: pointer; font-size: 14px; font-family: inherit; }
+.btn:hover { background: #f5f5f5; }
+.btn-primary { background: #534AB7; color: #fff; border-color: #534AB7; }
+.btn-primary:hover { background: #3C3489; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+h1 { font-size: 20px; font-weight: 600; margin-bottom: 1rem; }
+h2 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+.badge { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 20px; background: #EEEDFE; color: #3C3489; margin-bottom: 12px; }
+.badge-teacher { background: #FFF3CD; color: #856404; }
+.chat-wrap { border: 1px solid #e0e0e0; border-radius: 12px; padding: 1rem; min-height: 220px; max-height: 360px; overflow-y: auto; margin-bottom: 12px; background: #fafafa; }
+.msg { margin-bottom: 12px; }
+.msg-ai { display: flex; gap: 8px; align-items: flex-start; }
+.msg-ai .bubble { background: #fff; border: 1px solid #e0e0e0; border-radius: 0 12px 12px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.7; max-width: 85%; }
+.msg-student { display: flex; justify-content: flex-end; }
+.msg-student .bubble { background: #EEEDFE; color: #26215C; border-radius: 12px 0 12px 12px; padding: 10px 14px; font-size: 14px; line-height: 1.7; max-width: 85%; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: #534AB7; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 2px; }
+.hint-btn { font-size: 12px; color: #888; border: 1px solid #ddd; border-radius: 8px; padding: 5px 12px; background: #fff; cursor: pointer; margin-bottom: 8px; }
+.hint-btn:hover { background: #f5f5f5; }
+.progress-wrap { margin-bottom: 1rem; }
+.progress-bar { height: 4px; background: #e0e0e0; border-radius: 2px; margin-top: 6px; }
+.progress-fill { height: 4px; background: #534AB7; border-radius: 2px; transition: width 0.4s; }
+.progress-label { display: flex; justify-content: space-between; font-size: 12px; color: #888; }
+.result-card { background: #E1F5EE; border: 1px solid #5DCAA5; border-radius: 12px; padding: 1.25rem; margin-bottom: 12px; }
+.result-label { font-size: 12px; color: #0F6E56; margin-bottom: 4px; }
+.result-value { font-size: 15px; font-weight: 600; color: #085041; }
+.hint-count { font-size: 12px; color: #666; margin-top: 4px; }
+.error-msg { color: #c0392b; font-size: 13px; margin-top: 6px; }
+.loading { color: #999; font-size: 13px; font-style: italic; }
+.input-row { display: flex; gap: 8px; align-items: flex-end; }
+.input-row textarea { margin-bottom: 0; flex: 1; min-height: 60px; }
+</style>
+</head>
+<body>
+
+<div id="screen-password" class="screen active">
+  <div class="center">
+    <div class="card">
+      <h1>歴史概念コーチ</h1>
+      <label>パスワードを入力</label>
+      <input type="password" id="pw-input" placeholder="教師の方はパスワードを入力" />
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="checkPassword()">教師モードへ</button>
+        <button class="btn" onclick="goToStudent()">生徒として始める</button>
+      </div>
+      <p id="pw-error" class="error-msg" style="display:none;">パスワードが違います</p>
+    </div>
+  </div>
+</div>
+
+<div id="screen-teacher" class="screen">
+  <div class="wide">
+    <span class="badge badge-teacher">教師モード</span>
+    <h1>授業設定</h1>
+    <div class="card">
+      <label>OpenAI APIキー</label>
+      <input type="password" id="api-key" placeholder="sk-..." />
+      <label>教師モードのパスワード（変更する場合）</label>
+      <input type="text" id="teacher-pw" placeholder="例: history2025" />
+      <label>テーマ名</label>
+      <input type="text" id="theme-name" value="産業革命" />
+      <label>扱う概念の数</label>
+      <select id="concept-count">
+        <option value="1">1つ</option>
+        <option value="2">2つ</option>
+        <option value="3">3つ</option>
+      </select>
+      <label>入力形式</label>
+      <select id="input-mode">
+        <option value="free">自由記述</option>
+        <option value="fill">穴埋め形式</option>
+      </select>
+      <label>専門書の要点テキスト（AIの回答の根拠として使用）</label>
+      <textarea id="knowledge-text">産業革命（18世紀後半〜19世紀、イギリス発）は、手工業から機械制生産への転換を核心とする。蒸気機関の実用化により工場制度が確立し、石炭・鉄鋼業が急拡大した。農村から都市への人口移動が進み、労働者階級が形成された。資本を持つ工場主（資本家）と賃労働者の間に経済的格差が拡大し、資本主義経済体制の基盤が整った。交通革命（鉄道・蒸気船）により市場が広域化し、イギリスは「世界の工場」として覇権を確立した。</textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveSettings()">設定を保存して生徒画面へ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-student" class="screen">
+  <div class="wide">
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span class="badge" id="theme-display">産業革命</span>
+        <span id="concept-progress">概念 1 / 1</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+    <div class="chat-wrap" id="chat-area"></div>
+    <div id="hint-area" style="display:none;">
+      <button class="hint-btn" onclick="requestHint()">ヒントをもらう</button>
+    </div>
+    <div id="input-area">
+      <div class="input-row">
+        <textarea id="student-input" placeholder="ここに考えを書いてみよう..."></textarea>
+        <button class="btn btn-primary" onclick="submitAnswer()">送信</button>
+      </div>
+      <p style="font-size:12px;color:#999;margin-top:4px;">Enterで送信 / Shift+Enterで改行</p>
+    </div>
+    <div id="result-screen" style="display:none; margin-top:1.5rem;">
+      <h2>学習完了</h2>
+      <div id="results-list"></div>
+      <div class="btn-row">
+        <button class="btn btn-sm" onclick="copyResults()">結果をコピー</button>
+        <button class="btn btn-sm" onclick="resetStudent()">もう一度</button>
+      </div>
+      <p id="copy-msg" style="font-size:12px;color:#0F6E56;margin-top:8px;display:none;">コピーしました</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let settings = {
+  apiKey: '',
+  password: 'teacher123',
+  theme: '産業革命',
+  conceptCount: 1,
+  inputMode: 'free',
+  knowledge: '産業革命（18世紀後半〜19世紀、イギリス発）は、手工業から機械制生産への転換を核心とする。蒸気機関の実用化により工場制度が確立し、石炭・鉄鋼業が急拡大した。農村から都市への人口移動が進み、労働者階級が形成された。資本を持つ工場主（資本家）と賃労働者の間に経済的格差が拡大し、資本主義経済体制の基盤が整った。交通革命（鉄道・蒸気船）により市場が広域化し、イギリスは「世界の工場」として覇権を確立した。'
+};
+
+let state = {
+  currentConcept: 0,
+  stuckCount: 0,
+  hintCount: 0,
+  completedConcepts: [],
+  history: [],
+  isLoading: false
+};
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function checkPassword() {
+  if (document.getElementById('pw-input').value === settings.password) {
+    document.getElementById('pw-error').style.display = 'none';
+    showScreen('teacher');
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+  }
+}
+
+function goToStudent() {
+  if (!settings.apiKey) { alert('教師設定が完了していません。教師モードでAPIキーを設定してください。'); return; }
+  resetStudentState();
+  showScreen('student');
+  startSession();
+}
+
+function saveSettings() {
+  const key = document.getElementById('api-key').value.trim();
+  if (!key) { alert('APIキーを入力してください'); return; }
+  settings.apiKey = key;
+  const pw = document.getElementById('teacher-pw').value.trim();
+  if (pw) settings.password = pw;
+  settings.theme = document.getElementById('theme-name').value.trim() || '産業革命';
+  settings.conceptCount = parseInt(document.getElementById('concept-count').value);
+  settings.inputMode = document.getElementById('input-mode').value;
+  settings.knowledge = document.getElementById('knowledge-text').value.trim();
+  resetStudentState();
+  showScreen('student');
+  startSession();
+}
+
+function resetStudentState() {
+  state = { currentConcept: 0, stuckCount: 0, hintCount: 0, completedConcepts: [], history: [], isLoading: false };
+  document.getElementById('chat-area').innerHTML = '';
+  document.getElementById('student-input').value = '';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('input-area').style.display = 'block';
+  document.getElementById('hint-area').style.display = 'none';
+  updateProgress();
+}
+
+function resetStudent() { resetStudentState(); startSession(); }
+
+function updateProgress() {
+  const pct = Math.round((state.currentConcept / settings.conceptCount) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('concept-progress').textContent = '概念 ' + (state.currentConcept + 1) + ' / ' + settings.conceptCount;
+  document.getElementById('theme-display').textContent = settings.theme;
+}
+
+function addMessage(role, text) {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className = 'msg';
+  if (role === 'ai') {
+    div.className += ' msg-ai';
+    div.innerHTML = '<div class="avatar">AI</div><div class="bubble">' + text.replace(/\n/g, '<br>') + '</div>';
+  } else {
+    div.className += ' msg-student';
+    div.innerHTML = '<div class="bubble">' + text.replace(/\n/g, '<br>') + '</div>';
+  }
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function addLoading() {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className = 'msg msg-ai'; div.id = 'loading-msg';
+  div.innerHTML = '<div class="avatar">AI</div><div class="bubble loading">考えています...</div>';
+  area.appendChild(div); area.scrollTop = area.scrollHeight;
+}
+
+function removeLoading() { const el = document.getElementById('loading-msg'); if (el) el.remove(); }
+
+function buildSystemPrompt() {
+  const fillNote = settings.inputMode === 'fill'
+    ? '最初の問いかけでは「○○の□□化」や「□□の拡大」のような穴埋め形式のヒントを含む問いを出すこと。'
+    : '生徒が自由に言葉を選んで答えられるよう、オープンな問いを出すこと。';
+  return `あなたは歴史の授業で生徒の概念理解を支援するソクラテス式のコーチです。
+テーマ：${settings.theme}
+目標：生徒が中核的な歴史概念を自分の言葉で言語化できるようにする。
+
+【授業の前提知識（専門書より）】
+${settings.knowledge}
+
+【指示】
+- 生徒は授業を一通り終えた状態です。
+- 生徒が具体的な事実から概念を自分で引き出せるよう、問い返しを行ってください。
+- 直接答えを教えないでください。
+- 問いは一度に1つだけ出してください。短く、分かりやすい日本語で。
+- 生徒が正しく概念を言語化できたら、具体的に何がよかったかを伝えて褒め、返答の末尾に必ず「CONCEPT_DONE:（生徒が言語化した概念を簡潔に）」という形式で付けてください。
+- ${fillNote}
+- 上記の専門書テキストの内容を根拠として優先的に使用してください。`;
+}
+
+async function callAI(userMessage, isHint = false) {
+  if (state.isLoading) return null;
+  state.isLoading = true;
+  addLoading();
+  const messages = [{ role: 'system', content: buildSystemPrompt() }, ...state.history];
+  const userContent = isHint ? 'ヒントをください。でも答えは教えないでください。' : userMessage;
+  messages.push({ role: 'user', content: userContent });
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.apiKey },
+      body: JSON.stringify({ model: 'gpt-4o', max_tokens: 1000, messages })
+    });
+    const data = await res.json();
+    removeLoading(); state.isLoading = false;
+    if (data.error) { addMessage('ai', 'エラー：' + data.error.message); return null; }
+    const reply = data.choices[0].message.content;
+    state.history.push({ role: 'user', content: userContent });
+    state.history.push({ role: 'assistant', content: reply });
+    return reply;
+  } catch (e) {
+    removeLoading(); state.isLoading = false;
+    addMessage('ai', '接続エラーが発生しました。APIキーとネットワークを確認してください。');
+    return null;
+  }
+}
+
+async function startSession() {
+  updateProgress();
+  const opening = settings.inputMode === 'fill'
+    ? settings.theme + 'について学びましたね。授業を思い出しながら考えてみましょう。\n\n起きた変化を「○○の□□化」という形で表現するとしたら、何が入りそうですか？'
+    : settings.theme + 'について学びましたね。授業を思い出しながら考えてみましょう。\n\n' + settings.theme + 'で起きた一番大きな「変化」を、自分の言葉で表現してみてください。';
+  addMessage('ai', opening);
+  state.history.push({ role: 'assistant', content: opening });
+}
+
+async function submitAnswer() {
+  if (state.isLoading) return;
+  const input = document.getElementById('student-input').value.trim();
+  if (!input) return;
+  document.getElementById('student-input').value = '';
+  addMessage('student', input);
+  state.stuckCount++;
+  const reply = await callAI(input);
+  if (!reply) return;
+  if (reply.includes('CONCEPT_DONE:')) {
+    const parts = reply.split('CONCEPT_DONE:');
+    const displayReply = parts[0].trim();
+    const concept = parts[1].trim().split('\n')[0];
+    if (displayReply) addMessage('ai', displayReply);
+    state.completedConcepts.push({ concept, hints: state.hintCount });
+    state.hintCount = 0; state.stuckCount = 0; state.currentConcept++;
+    document.getElementById('hint-area').style.display = 'none';
+    if (state.currentConcept >= settings.conceptCount) {
+      setTimeout(showResults, 1200);
+    } else {
+      updateProgress();
+      setTimeout(async () => {
+        const next = await callAI('次の概念に進んでください。新しい問いを出してください。');
+        if (next && !next.includes('CONCEPT_DONE:')) addMessage('ai', next);
+      }, 800);
+    }
+  } else {
+    addMessage('ai', reply);
+    if (state.stuckCount >= 2) document.getElementById('hint-area').style.display = 'block';
+  }
+}
+
+async function requestHint() {
+  if (state.isLoading) return;
+  state.hintCount++; state.stuckCount = 0;
+  document.getElementById('hint-area').style.display = 'none';
+  const reply = await callAI('', true);
+  if (reply && !reply.includes('CONCEPT_DONE:')) addMessage('ai', reply);
+}
+
+function showResults() {
+  document.getElementById('input-area').style.display = 'none';
+  document.getElementById('hint-area').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  state.completedConcepts.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'result-card';
+    d.innerHTML = '<p class="result-label">概念 ' + (i+1) + '</p><p class="result-value">' + c.concept + '</p><p class="hint-count">ヒント使用：' + c.hints + '回</p>';
+    list.appendChild(d);
+  });
+}
+
+function copyResults() {
+  let text = '【' + settings.theme + ' 学習記録】\n';
+  state.completedConcepts.forEach((c, i) => { text += '概念' + (i+1) + '：' + c.concept + '（ヒント' + c.hints + '回）\n'; });
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('copy-msg').style.display = 'block';
+    setTimeout(() => { document.getElementById('copy-msg').style.display = 'none'; }, 2000);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('student-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitAnswer(); }
+  });
+});
+</script>
+</body>
+</html>
